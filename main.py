@@ -16,8 +16,7 @@ from sklearn.metrics import classification_report, accuracy_score
 
 print("\nLoading datasets...\n")
 
-fake_df = pd.read_csv("dataset/Fake.csv")
-real_df = pd.read_csv("dataset/Real.csv")
+
 
 
 # =====================================================
