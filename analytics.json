@@ -1,0 +1,16 @@
+{
+    "total_uploads": 334,
+    "text_uploads": 69,
+    "image_uploads": 197,
+    "audio_uploads": 68,
+    "fake_detected": 98,
+    "real_detected": 236,
+    "text_fake": 49,
+    "text_real": 20,
+    "image_fake": 19,
+    "image_real": 178,
+    "audio_fake": 30,
+    "audio_real": 38,
+    "avg_risk_score": 67.29,
+    "total_risk_score": 22474.409999999967
+}
