@@ -20,82 +20,10 @@ print("\nLoading datasets...\n")
 
 
 # =====================================================
-# 2. CHECK DATASET COLUMNS
-# =====================================================
-
-print("FAKE DATASET COLUMNS:")
-print(fake_df.columns)
-
-print("\nREAL DATASET COLUMNS:")
-print(real_df.columns)
-
+#
 
 # =====================================================
 # 3. FIX COLUMN NAMES
-# =====================================================
-
-# Fake dataset column
-fake_df = fake_df.rename(columns={
-    "text": "text"
-})
-
-# Real dataset column
-real_df = real_df.rename(columns={
-    "sentence": "text"
-})
-
-TEXT_COLUMN = "text"
-
-
-# =====================================================
-# 4. ADD LABELS
-# =====================================================
-
-# fake = 1
-# real = 0
-
-fake_df["label"] = 1
-real_df["label"] = 0
-
-
-# =====================================================
-# 5. KEEP ONLY REQUIRED COLUMNS
-# =====================================================
-
-fake_df = fake_df[[TEXT_COLUMN, "label"]]
-real_df = real_df[[TEXT_COLUMN, "label"]]
-
-
-# =====================================================
-# 6. COMBINE DATASETS
-# =====================================================
-
-df = pd.concat([fake_df, real_df], ignore_index=True)
-
-
-# =====================================================
-# 7. REMOVE NULL VALUES
-# =====================================================
-
-df.dropna(inplace=True)
-
-
-# =====================================================
-# 8. SHUFFLE DATASET
-# =====================================================
-
-df = df.sample(frac=1, random_state=42).reset_index(drop=True)
-
-
-# =====================================================
-# 9. DATASET INFO
-# =====================================================
-
-print("\nDATASET SHAPE:")
-print(df.shape)
-
-print("\nLABEL DISTRIBUTION:")
-print(df["label"].value_counts())
 
 
 # =====================================================
