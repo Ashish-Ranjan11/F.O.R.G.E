@@ -1,238 +1,354 @@
+from __future__ import annotations
+
 import re
-import numpy as np
-import joblib
 import string
 
-from nltk import word_tokenize, pos_tag
+import numpy as np
+from nltk import pos_tag, word_tokenize
 from textstat import flesch_reading_ease
-from sentence_transformers import SentenceTransformer
 
-# ==========================================
-# LOAD MODELS
-# ==========================================
-
-model = joblib.load(
-    "models/final_text_model.pkl"
+from backend.services.text_model_registry import (
+    get_sbert_model,
+    ngram_vectorizer,
+    text_model,
+    tfidf_vectorizer,
 )
 
-tfidf = joblib.load(
-    "models/tf_idf.pkl"
-)
-
-ngram = joblib.load(
-    "models/n_gram.pkl"
-)
-
-sbert_model = SentenceTransformer(
-    "all-MiniLM-L6-v2"
-)
 
 # ==========================================
-# COLOR ENGINE
+# SENTENCE RISK CLASSIFICATION
 # ==========================================
 
-def classify_sentence(score):
+def classify_sentence(
+    score: float,
+) -> dict:
+    numeric_score = float(
+        score
+    )
 
-    if score >= 85:
-
+    if numeric_score >= 85:
         return {
             "risk": "VERY HIGH",
-            "color": "red"
+            "color": "red",
         }
 
-    elif score >= 60:
-
+    if numeric_score >= 60:
         return {
             "risk": "HIGH",
-            "color": "orange"
+            "color": "orange",
         }
 
-    elif score >= 40:
-
+    if numeric_score >= 40:
         return {
             "risk": "MEDIUM",
-            "color": "yellow"
+            "color": "yellow",
         }
 
     return {
         "risk": "LOW",
-        "color": "green"
+        "color": "green",
     }
 
+
 # ==========================================
-# STYLOMETRIC
+# STYLOMETRIC EXTRACTION
 # ==========================================
 
-def extract_stylometric(text):
-
+def extract_stylometric(
+    text: str,
+) -> list[float]:
     try:
-
-        words = word_tokenize(text)
-
-        sentences = re.split(
-            r"[.!?]",
+        words = word_tokenize(
             text
         )
 
-        sent_lengths = [
-            len(s.split())
-            for s in sentences
-            if s.strip() != ""
+        sentence_parts = re.split(
+            r"[.!?]",
+            text,
+        )
+
+        sentence_lengths = [
+            len(sentence.split())
+            for sentence in sentence_parts
+            if sentence.strip()
         ]
 
-        sent_var = (
-            np.var(sent_lengths)
-            if len(sent_lengths) > 0
-            else 0
+        sentence_variance = (
+            float(
+                np.var(
+                    sentence_lengths
+                )
+            )
+            if sentence_lengths
+            else 0.0
         )
 
-        word_freq = len(words)
-
-        punct_count = sum(
-            1 for c in text
-            if c in string.punctuation
+        word_frequency = float(
+            len(words)
         )
 
-        pos_tags = pos_tag(words)
-
-        noun_count = sum(
-            1 for _, tag in pos_tags
-            if "NN" in tag
+        punctuation_count = float(
+            sum(
+                1
+                for character in text
+                if character
+                in string.punctuation
+            )
         )
 
-        verb_count = sum(
-            1 for _, tag in pos_tags
-            if "VB" in tag
+        tagged_words = pos_tag(
+            words
         )
 
-        readability = (
-            flesch_reading_ease(text)
+        noun_count = float(
+            sum(
+                1
+                for _, tag in tagged_words
+                if "NN" in tag
+            )
+        )
+
+        verb_count = float(
+            sum(
+                1
+                for _, tag in tagged_words
+                if "VB" in tag
+            )
+        )
+
+        readability = float(
+            flesch_reading_ease(
+                text
+            )
         )
 
         return [
-            float(sent_var),
-            float(word_freq),
-            float(punct_count),
-            float(noun_count),
-            float(verb_count),
-            float(readability)
+            sentence_variance,
+            word_frequency,
+            punctuation_count,
+            noun_count,
+            verb_count,
+            readability,
         ]
 
-    except:
+    except Exception as error:
+        print(
+            "Sentence stylometric warning:",
+            error,
+        )
 
-        return [0, 0, 0, 0, 0, 0]
+        return [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+        ]
+
 
 # ==========================================
-# REAL SENTENCE ANALYSIS
+# EXPLANATION GENERATION
 # ==========================================
 
-def analyze_document(text):
+def build_sentence_reason(
+    ai_score: float,
+) -> str:
+    if ai_score >= 85:
+        return (
+            "Strong machine-generated linguistic "
+            "patterns were detected, including highly "
+            "regular sentence organization, predictable "
+            "lexical selection, and reduced stylistic "
+            "variation."
+        )
 
-    sentences = re.split(
-        r'(?<=[.!?])\s+',
-        text
+    if ai_score >= 60:
+        return (
+            "The sentence contains multiple AI-like "
+            "characteristics, including comparatively "
+            "uniform structure and statistically "
+            "predictable phrasing."
+        )
+
+    if ai_score >= 40:
+        return (
+            "Moderate synthetic-language indicators "
+            "were detected; however, the available "
+            "evidence is not independently conclusive."
+        )
+
+    return (
+        "The sentence preserves natural human-like "
+        "variation in vocabulary, phrasing, and "
+        "sentence construction."
     )
 
-    results = []
 
-    for sentence in sentences:
+# ==========================================
+# DOCUMENT SENTENCE ANALYSIS
+# ==========================================
 
-        sentence = sentence.strip()
+def analyze_document(
+    text: str,
+) -> list[dict]:
+    normalized_text = (
+        text or ""
+    ).strip()
 
-        if len(sentence) < 5:
+    if not normalized_text:
+        return []
+
+    sentences = re.split(
+        r"(?<=[.!?])\s+",
+        normalized_text,
+    )
+
+    results: list[dict] = []
+
+    sbert_model = get_sbert_model()
+
+    for sentence_index, sentence in enumerate(
+        sentences
+    ):
+        normalized_sentence = (
+            sentence.strip()
+        )
+
+        if len(normalized_sentence) < 5:
             continue
 
         try:
-
-            # ======================================
-            # FEATURES
-            # ======================================
-
-            stylometric = np.array([
-                extract_stylometric(sentence)
-            ])
-
-            tfidf_features = tfidf.transform(
-                [sentence]
-            ).toarray()
-
-            ngram_features = ngram.transform(
-                [sentence]
-            ).toarray()
-
-            embeddings = sbert_model.encode(
-                [sentence]
+            stylometric_features = (
+                np.asarray(
+                    [
+                        extract_stylometric(
+                            normalized_sentence
+                        )
+                    ],
+                    dtype=np.float32,
+                )
             )
 
-            X = np.hstack([
-                stylometric,
-                tfidf_features,
-                ngram_features,
-                embeddings
-            ])
+            tfidf_features = (
+                tfidf_vectorizer
+                .transform(
+                    [normalized_sentence]
+                )
+                .toarray()
+            )
 
-            # ======================================
-            # REAL MODEL PREDICTION
-            # ======================================
+            ngram_features = (
+                ngram_vectorizer
+                .transform(
+                    [normalized_sentence]
+                )
+                .toarray()
+            )
 
-            probability = model.predict_proba(X)[0]
+            semantic_embeddings = (
+                sbert_model.encode(
+                    [
+                        normalized_sentence
+                    ],
+                    convert_to_numpy=True,
+                    show_progress_bar=False,
+                )
+            )
+
+            feature_matrix = np.hstack(
+                [
+                    stylometric_features,
+                    tfidf_features,
+                    ngram_features,
+                    semantic_embeddings,
+                ]
+            )
+
+            probability = (
+                text_model.predict_proba(
+                    feature_matrix
+                )[0]
+            )
 
             ai_score = round(
-                float(probability[1]) * 100,
-                2
+                float(
+                    probability[1]
+                ) * 100.0,
+                2,
             )
 
-            classification = classify_sentence(
-                ai_score
+            human_score = round(
+                float(
+                    probability[0]
+                ) * 100.0,
+                2,
             )
 
-            # ======================================
-            # REASONING
-            # ======================================
-
-            if ai_score >= 85:
-
-                reason = (
-                    "Strong AI generation patterns detected"
+            classification = (
+                classify_sentence(
+                    ai_score
                 )
+            )
 
-            elif ai_score >= 60:
+            results.append(
+                {
+                    "index": sentence_index,
+                    "sentence": (
+                        normalized_sentence
+                    ),
+                    "score": ai_score,
+                    "ai_probability": (
+                        ai_score
+                    ),
+                    "human_probability": (
+                        human_score
+                    ),
+                    "risk": (
+                        classification[
+                            "risk"
+                        ]
+                    ),
+                    "color": (
+                        classification[
+                            "color"
+                        ]
+                    ),
+                    "reason": (
+                        build_sentence_reason(
+                            ai_score
+                        )
+                    ),
+                }
+            )
 
-                reason = (
-                    "Sentence structure resembles AI-generated content"
-                )
+        except Exception as error:
+            print(
+                "Sentence analysis error:",
+                normalized_sentence[:80],
+                error,
+            )
 
-            elif ai_score >= 40:
-
-                reason = (
-                    "Moderate AI indicators detected"
-                )
-
-            else:
-
-                reason = (
-                    "Natural human-like writing detected"
-                )
-
-            # ======================================
-            # SAVE
-            # ======================================
-
-            results.append({
-
-                "sentence": sentence,
-
-                "score": ai_score,
-
-                "risk": classification["risk"],
-
-                "color": classification["color"],
-
-                "reason": reason
-            })
-
-        except Exception as e:
-
-            print("Sentence Error:", e)
+            results.append(
+                {
+                    "index": sentence_index,
+                    "sentence": (
+                        normalized_sentence
+                    ),
+                    "score": 0.0,
+                    "ai_probability": 0.0,
+                    "human_probability": 0.0,
+                    "risk": "UNKNOWN",
+                    "color": "gray",
+                    "reason": (
+                        "The sentence could not be "
+                        "evaluated because an internal "
+                        "feature extraction error occurred."
+                    ),
+                    "error": str(
+                        error
+                    ),
+                }
+            )
 
     return results

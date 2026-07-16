@@ -79,3 +79,20 @@ venv/
 *.wav
 *.mp3
 *.m4a
+# Exported Docker images
+forge-backend.tar
+forge-frontend.tar
+*.tar
+
+# Runtime and generated data
+venv/
+frontend/node_modules/
+**/__pycache__/
+*.pyc
+.DS_Store
+uploads/
+reports/
+outputs/
+audio_evaluation_results/
+backend/requirements.txt.bak*
+*.tar

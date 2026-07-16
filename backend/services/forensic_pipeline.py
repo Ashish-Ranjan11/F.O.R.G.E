@@ -1,113 +1,123 @@
-import numpy as np
-import joblib
-import shap
+from __future__ import annotations
+
 import re
 import string
+from typing import Dict
 
-from nltk import word_tokenize, pos_tag
+import numpy as np
+from nltk import pos_tag, word_tokenize
 from textstat import flesch_reading_ease
-from sentence_transformers import SentenceTransformer
 
+from backend.services.text_model_registry import (
+    get_sbert_model,
+    ngram_vectorizer,
+    shap_explainer,
+    text_model,
+    tfidf_vectorizer,
+)
 from backend.xai.parameter_reasoning import (
+    ngram_reason,
+    semantic_reason,
     stylometric_reason,
     tfidf_reason,
-    ngram_reason,
-    semantic_reason
 )
+from backend.xai.sentence_highlighter import analyze_document
 
-from backend.xai.sentence_highlighter import (
-    analyze_document
-)
 
 # ==========================================
-# LOAD MODELS
+# STYLOMETRIC FEATURE EXTRACTION
 # ==========================================
 
-print("Loading Models...")
-
-model = joblib.load("models/final_text_model.pkl")
-tfidf = joblib.load("models/tf_idf.pkl")
-ngram = joblib.load("models/n_gram.pkl")
-
-sbert_model = SentenceTransformer(
-    "all-MiniLM-L6-v2"
-)
-
-explainer = shap.TreeExplainer(model)
-
-print("Models Loaded")
-
-# ==========================================
-# STYLOMETRIC
-# ==========================================
-
-def extract_stylometric(text):
-
+def extract_stylometric(text: str) -> list[float]:
     try:
-
         words = word_tokenize(text)
 
         sentences = re.split(
             r"[.!?]",
-            text
+            text,
         )
 
-        sent_lengths = [
-            len(s.split())
-            for s in sentences
-            if s.strip() != ""
+        sentence_lengths = [
+            len(sentence.split())
+            for sentence in sentences
+            if sentence.strip()
         ]
 
-        sent_var = (
-            np.var(sent_lengths)
-            if len(sent_lengths) > 0
-            else 0
+        sentence_variance = (
+            float(np.var(sentence_lengths))
+            if sentence_lengths
+            else 0.0
         )
 
-        word_freq = len(words)
+        word_frequency = float(len(words))
 
-        punct_count = sum(
-            1 for c in text
-            if c in string.punctuation
+        punctuation_count = float(
+            sum(
+                1
+                for character in text
+                if character in string.punctuation
+            )
         )
 
-        pos_tags = pos_tag(words)
+        tagged_words = pos_tag(words)
 
-        noun_count = sum(
-            1 for _, t in pos_tags
-            if "NN" in t
+        noun_count = float(
+            sum(
+                1
+                for _, tag in tagged_words
+                if "NN" in tag
+            )
         )
 
-        verb_count = sum(
-            1 for _, t in pos_tags
-            if "VB" in t
+        verb_count = float(
+            sum(
+                1
+                for _, tag in tagged_words
+                if "VB" in tag
+            )
         )
 
-        readability = flesch_reading_ease(text)
+        readability = float(
+            flesch_reading_ease(text)
+        )
 
         return [
-            float(sent_var),
-            float(word_freq),
-            float(punct_count),
-            float(noun_count),
-            float(verb_count),
-            float(readability)
+            sentence_variance,
+            word_frequency,
+            punctuation_count,
+            noun_count,
+            verb_count,
+            readability,
         ]
 
-    except Exception:
+    except Exception as error:
+        print(
+            "Stylometric extraction warning:",
+            error,
+        )
 
-        return [0, 0, 0, 0, 0, 0]
+        return [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+        ]
+
 
 # ==========================================
-# BALANCING HELPERS
+# PARAMETER SCORE NORMALIZATION
 # ==========================================
 
-def normalize_to_total(scores):
-
-    total = sum(scores.values())
+def normalize_to_total(
+    scores: Dict[str, float],
+) -> Dict[str, float]:
+    total = float(
+        sum(scores.values())
+    )
 
     if total <= 0:
-
         return {
             key: 25.0
             for key in scores
@@ -115,212 +125,378 @@ def normalize_to_total(scores):
 
     return {
         key: round(
-            (value / total) * 100,
-            2
+            (float(value) / total) * 100.0,
+            2,
         )
         for key, value in scores.items()
     }
 
 
-def cap_and_redistribute(scores, max_cap=40):
-
-    capped = {}
-    overflow = 0
-    under_cap_keys = []
+def cap_and_redistribute(
+    scores: Dict[str, float],
+    max_cap: float = 40.0,
+) -> Dict[str, float]:
+    capped: Dict[str, float] = {}
+    overflow = 0.0
+    under_cap_keys: list[str] = []
 
     for key, value in scores.items():
+        numeric_value = float(value)
 
-        if value > max_cap:
+        if numeric_value > max_cap:
             capped[key] = max_cap
-            overflow += value - max_cap
+            overflow += numeric_value - max_cap
         else:
-            capped[key] = value
+            capped[key] = numeric_value
             under_cap_keys.append(key)
 
     if overflow > 0 and under_cap_keys:
-
-        add_each = overflow / len(under_cap_keys)
+        addition = overflow / len(
+            under_cap_keys
+        )
 
         for key in under_cap_keys:
-            capped[key] += add_each
+            capped[key] += addition
 
-    return normalize_to_total(capped)
+    return normalize_to_total(
+        capped
+    )
 
 
 def get_balanced_parameter_scores(
-    stylometric_val,
-    tfidf_val,
-    ngram_val,
-    semantic_val
-):
-
+    stylometric_value: float,
+    tfidf_value: float,
+    ngram_value: float,
+    semantic_value: float,
+) -> Dict[str, float]:
     raw_scores = {
-        "stylometric": float(stylometric_val),
-        "tfidf": float(tfidf_val),
-        "ngram": float(ngram_val),
-        "semantic": float(semantic_val)
+        "stylometric": float(
+            stylometric_value
+        ),
+        "tfidf": float(
+            tfidf_value
+        ),
+        "ngram": float(
+            ngram_value
+        ),
+        "semantic": float(
+            semantic_value
+        ),
     }
 
-    normalized = normalize_to_total(raw_scores)
+    normalized = normalize_to_total(
+        raw_scores
+    )
 
-    balanced = cap_and_redistribute(
+    return cap_and_redistribute(
         normalized,
-        max_cap=40
+        max_cap=40.0,
     )
 
-    return balanced
 
 # ==========================================
-# MAIN PIPELINE
+# SHAP OUTPUT NORMALIZATION
 # ==========================================
 
-def analyze_text(text):
+def _extract_shap_vector(
+    raw_shap: object,
+) -> np.ndarray:
+    if isinstance(raw_shap, list):
+        array = np.asarray(
+            raw_shap[-1]
+        )
+    else:
+        array = np.asarray(
+            raw_shap
+        )
 
-    stylometric = np.array([
-        extract_stylometric(text)
-    ])
+    if array.ndim == 3:
+        # Typical shape:
+        # (samples, features, classes)
+        array = array[
+            0,
+            :,
+            -1,
+        ]
 
-    tfidf_features = tfidf.transform(
-        [text]
-    ).toarray()
+    elif array.ndim == 2:
+        # Typical shape:
+        # (samples, features)
+        array = array[0]
 
-    ngram_features = ngram.transform(
-        [text]
-    ).toarray()
+    elif array.ndim == 1:
+        pass
 
-    embeddings = sbert_model.encode(
-        [text]
+    else:
+        array = array.reshape(-1)
+
+    return np.abs(
+        array.astype(float)
     )
 
-    X = np.hstack([
-        stylometric,
-        tfidf_features,
-        ngram_features,
-        embeddings
-    ])
 
-    prediction = model.predict(X)[0]
+# ==========================================
+# MAIN TEXT FORENSIC PIPELINE
+# ==========================================
 
-    probability = model.predict_proba(X)[0]
+def analyze_text(
+    text: str,
+) -> dict:
+    normalized_text = (
+        text or ""
+    ).strip()
+
+    if not normalized_text:
+        raise ValueError(
+            "Text input cannot be empty."
+        )
+
+    stylometric_features = np.asarray(
+        [
+            extract_stylometric(
+                normalized_text
+            )
+        ],
+        dtype=np.float32,
+    )
+
+    tfidf_features = (
+        tfidf_vectorizer
+        .transform(
+            [normalized_text]
+        )
+        .toarray()
+    )
+
+    ngram_features = (
+        ngram_vectorizer
+        .transform(
+            [normalized_text]
+        )
+        .toarray()
+    )
+
+    semantic_embeddings = (
+        get_sbert_model()
+        .encode(
+            [normalized_text],
+            convert_to_numpy=True,
+            show_progress_bar=False,
+        )
+    )
+
+    feature_matrix = np.hstack(
+        [
+            stylometric_features,
+            tfidf_features,
+            ngram_features,
+            semantic_embeddings,
+        ]
+    )
+
+    raw_prediction = int(
+        text_model.predict(
+            feature_matrix
+        )[0]
+    )
+
+    class_probabilities = (
+        text_model.predict_proba(
+            feature_matrix
+        )[0]
+    )
+
+    predicted_probability = float(
+        np.max(
+            class_probabilities
+        )
+    )
 
     confidence = round(
-        float(np.max(probability)) * 100,
-        2
+        predicted_probability * 100.0,
+        2,
+    )
+
+    ai_probability = round(
+        float(
+            class_probabilities[1]
+        ) * 100.0,
+        2,
+    )
+
+    human_probability = round(
+        float(
+            class_probabilities[0]
+        ) * 100.0,
+        2,
     )
 
     # ======================================
-    # SHAP VALUES
+    # SHAP CONTRIBUTION ANALYSIS
     # ======================================
 
-    raw_shap = explainer.shap_values(X)
+    raw_shap_values = (
+        shap_explainer.shap_values(
+            feature_matrix
+        )
+    )
 
-    if isinstance(raw_shap, list):
-        shap_values = raw_shap[0]
+    shap_vector = _extract_shap_vector(
+        raw_shap_values
+    )
+
+    shap_total = float(
+        np.sum(
+            shap_vector
+        )
+    )
+
+    if shap_total <= 0:
+        scaled_shap = np.zeros_like(
+            shap_vector
+        )
     else:
-        shap_values = raw_shap
+        scaled_shap = (
+            shap_vector
+            / shap_total
+        ) * 100.0
 
-    shap_val = np.abs(
-        shap_values[0]
+    stylometric_length = (
+        stylometric_features.shape[1]
     )
 
-    total = np.sum(shap_val)
-
-    if total == 0:
-        scaled = np.zeros_like(shap_val)
-    else:
-        scaled = (shap_val / total) * 100
-
-    # ======================================
-    # FEATURE LENGTHS
-    # ======================================
-
-    stylometric_len = stylometric.shape[1]
-    tfidf_len = tfidf_features.shape[1]
-    ngram_len = ngram_features.shape[1]
-
-    stylometric_val = np.sum(
-        scaled[:stylometric_len]
+    tfidf_length = (
+        tfidf_features.shape[1]
     )
 
-    tfidf_val = np.sum(
-        scaled[
-            stylometric_len:
-            stylometric_len + tfidf_len
-        ]
+    ngram_length = (
+        ngram_features.shape[1]
     )
 
-    ngram_val = np.sum(
-        scaled[
-            stylometric_len + tfidf_len:
-            stylometric_len + tfidf_len + ngram_len
-        ]
+    tfidf_start = (
+        stylometric_length
     )
 
-    semantic_val = np.sum(
-        scaled[
-            stylometric_len + tfidf_len + ngram_len:
-        ]
+    ngram_start = (
+        tfidf_start
+        + tfidf_length
     )
 
-    balanced_scores = get_balanced_parameter_scores(
-        stylometric_val,
-        tfidf_val,
-        ngram_val,
-        semantic_val
+    semantic_start = (
+        ngram_start
+        + ngram_length
     )
 
-    # ======================================
-    # REASONING
-    # ======================================
+    stylometric_value = float(
+        np.sum(
+            scaled_shap[
+                :stylometric_length
+            ]
+        )
+    )
+
+    tfidf_value = float(
+        np.sum(
+            scaled_shap[
+                tfidf_start:
+                ngram_start
+            ]
+        )
+    )
+
+    ngram_value = float(
+        np.sum(
+            scaled_shap[
+                ngram_start:
+                semantic_start
+            ]
+        )
+    )
+
+    semantic_value = float(
+        np.sum(
+            scaled_shap[
+                semantic_start:
+            ]
+        )
+    )
+
+    balanced_scores = (
+        get_balanced_parameter_scores(
+            stylometric_value,
+            tfidf_value,
+            ngram_value,
+            semantic_value,
+        )
+    )
 
     parameter_contribution = {
-        "stylometric": stylometric_reason(
-            float(balanced_scores["stylometric"])
+        "stylometric": (
+            stylometric_reason(
+                balanced_scores[
+                    "stylometric"
+                ]
+            )
         ),
-
-        "tfidf": tfidf_reason(
-            float(balanced_scores["tfidf"])
+        "tfidf": (
+            tfidf_reason(
+                balanced_scores[
+                    "tfidf"
+                ]
+            )
         ),
-
-        "ngram": ngram_reason(
-            float(balanced_scores["ngram"])
+        "ngram": (
+            ngram_reason(
+                balanced_scores[
+                    "ngram"
+                ]
+            )
         ),
-
-        "semantic": semantic_reason(
-            float(balanced_scores["semantic"])
-        )
+        "semantic": (
+            semantic_reason(
+                balanced_scores[
+                    "semantic"
+                ]
+            )
+        ),
     }
 
-    # ======================================
-    # SENTENCE ANALYSIS / TEXT HEATMAP
-    # ======================================
+    highlighted_document = (
+        analyze_document(
+            normalized_text
+        )
+    )
 
-    highlighted_document = analyze_document(
-        text
+    prediction_label = (
+        "AI"
+        if raw_prediction == 1
+        else "Human"
+    )
+
+    risk_level = (
+        "HIGH"
+        if confidence >= 75
+        else "MEDIUM"
+        if confidence >= 45
+        else "LOW"
     )
 
     return {
-        "prediction": (
-            "AI"
-            if prediction == 1
-            else "Human"
-        ),
-
+        "prediction": prediction_label,
         "confidence": confidence,
-
-        "risk_score": confidence,
-
-        "risk_level": (
-            "HIGH"
-            if confidence >= 75
-            else "MEDIUM"
-            if confidence >= 45
-            else "LOW"
+        "ai_probability": ai_probability,
+        "human_probability": (
+            human_probability
         ),
-
-        "parameter_contribution": parameter_contribution,
-
-        "highlighted_document": highlighted_document,
-
-        "full_document": highlighted_document
+        "risk_score": confidence,
+        "risk_level": risk_level,
+        "parameter_contribution": (
+            parameter_contribution
+        ),
+        "highlighted_document": (
+            highlighted_document
+        ),
+        "full_document": (
+            highlighted_document
+        ),
     }

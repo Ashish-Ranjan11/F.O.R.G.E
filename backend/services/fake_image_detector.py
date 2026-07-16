@@ -5,6 +5,9 @@ import cv2
 import numpy as np
 import pandas as pd
 import tensorflow as tf
+from backend.services.image_region_analysis import (
+    analyse_image_regions
+)
 
 from PIL import Image, ExifTags
 from tensorflow.keras.preprocessing import image
