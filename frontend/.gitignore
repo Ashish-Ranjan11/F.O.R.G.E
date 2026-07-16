@@ -21,9 +21,7 @@
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-# Models
-*.h5
-backend/models/
+
 
 # Dataset
 image_ai/
