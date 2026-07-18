@@ -47,3 +47,4 @@ networkx==3.4.2
 
 supabase==2.15.3
 librosa==0.10.2.post1
+spafe==0.3.3
