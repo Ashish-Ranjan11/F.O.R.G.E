@@ -1,0 +1,22 @@
+{
+    "model_type": "pytorch",
+    "input_features": [
+        "eye_blink",
+        "lip_movement",
+        "head_pose",
+        "boundary",
+        "landmark",
+        "lighting",
+        "compression",
+        "flicker",
+        "optical_flow",
+        "identity",
+        "gan_fingerprint"
+    ],
+    "sequence_length": 30,
+    "num_features": 11,
+    "classes": [
+        "Real",
+        "Fake"
+    ]
+}

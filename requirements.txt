@@ -46,5 +46,9 @@ sympy==1.14.0
 networkx==3.4.2
 
 supabase==2.15.3
+<<<<<<< HEAD
 librosa==0.10.2.post1
 spafe==0.3.3
+=======
+retina-face==0.0.18
+>>>>>>> 9f33d66 (Redesign F.O.R.G.E landing page with  UI)

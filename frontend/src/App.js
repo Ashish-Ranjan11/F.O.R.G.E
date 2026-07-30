@@ -12,7 +12,8 @@ import InteractiveAudioInvestigator from
   "./components/InteractiveAudioInvestigator";
 
 import InteractiveTextInvestigator from "./components/InteractiveTextInvestigator";
-
+import CinematicCommandCentre from "./components/CinematicCommandCentre";
+import forgeVideo from "./assets/videos/forge-intelligence-core.mp4";
 import {
   FaShieldAlt,
   FaFileAlt,
@@ -1386,6 +1387,72 @@ const ResultStack = ({ type }) => (
   </>
 );
 
+
+  const CommandNav = () => (
+    <nav className="command-nav" aria-label="FORGE navigation">
+      <button className={page === "dashboard" ? "active" : ""} onClick={() => openPage("dashboard")}>
+        <FaShieldAlt /><span>Command Centre</span>
+      </button>
+      <button className={page === "text" ? "active" : ""} onClick={() => openPage("text")}>
+        <FaFileAlt /><span>Text</span>
+      </button>
+      <button className={page === "image" ? "active" : ""} onClick={() => openPage("image")}>
+        <FaImage /><span>Image</span>
+      </button>
+      <button className={page === "audio" ? "active" : ""} onClick={() => openPage("audio")}>
+        <FaMicrophone /><span>Audio</span>
+      </button>
+      <button className={page === "analytics" ? "active" : ""} onClick={() => loadAnalytics("overview")}>
+        <FaChartBar /><span>Analytics</span>
+      </button>
+    </nav>
+  );
+
+  const ForgeHero = ({ beginInvestigation, openAnalytics }) => (
+    <section className="cinematic-forge-hero">
+      <video className="cinematic-forge-video" autoPlay muted loop playsInline preload="metadata">
+        <source src={forgeVideo} type="video/mp4" />
+      </video>
+
+      <div className="cinematic-video-shade" />
+      <div className="cinematic-video-grid" />
+      <div className="cinematic-vignette" />
+      <div className="cinematic-scan-beam" />
+      <div className="cinematic-scanlines" />
+
+      <div className="cinematic-hud hud-left-top">
+        <FaFingerprint /><span>BIOMETRIC MATRIX</span><strong>LOCKED</strong>
+      </div>
+      <div className="cinematic-hud hud-right-top">
+        <FaBrain /><span>AI ENGINE</span><strong>ONLINE</strong>
+      </div>
+      <div className="cinematic-hud hud-left-bottom">
+        <FaSatelliteDish /><span>SIGNAL LAYER</span><strong>STABLE</strong>
+      </div>
+      <div className="cinematic-hud hud-right-bottom">
+        <FaNetworkWired /><span>MULTIMODAL XAI</span><strong>ACTIVE</strong>
+      </div>
+
+      <div className="cinematic-forge-copy">
+        <p className="cinematic-kicker"><FaLock /> Secure Deepfake Intelligence Command Centre</p>
+        <h1 className="cinematic-forge-title" data-text="F.O.R.G.E.">F.O.R.G.E.</h1>
+        <p className="cinematic-forge-fullform">Forensic Observation &amp; Recognition Gateway</p>
+        <p className="cinematic-forge-tagline">Multimodal Deepfake Detection · Explainable AI · Digital Evidence Intelligence</p>
+
+        <div className="cinematic-forge-actions">
+          <button className="cinematic-primary" onClick={beginInvestigation}><FaBolt /> Begin Investigation</button>
+          <button className="cinematic-secondary" onClick={openAnalytics}><FaChartBar /> Open Analytics</button>
+        </div>
+      </div>
+
+      <div className="cinematic-status-strip">
+        <span><i /> TEXT ENGINE ONLINE</span>
+        <span><i /> IMAGE ENGINE ONLINE</span>
+        <span><i /> AUDIO ENGINE ONLINE</span>
+      </div>
+    </section>
+  );
+
   /*
   |--------------------------------------------------------------------------
   | Dashboard
@@ -1393,241 +1460,7 @@ const ResultStack = ({ type }) => (
   */
 
   const Dashboard = () => (
-    <main className="forge-workspace page-snap">
-
-      <Header
-        icon={<FaShieldAlt />}
-        title="FORGE Command Center"
-        subtitle="Multimodal deepfake detection, explainable AI and digital forensic evidence analysis."
-      />
-
-
-      <section className="soc-hero">
-
-        <div className="soc-left">
-
-          <p className="forge-eyebrow">
-            Multimodal Digital Forensics Console
-          </p>
-
-          <h2>
-            Deepfake Threat Intelligence
-            and Explainable Evidence Analysis
-          </h2>
-
-          <p>
-            Analyse suspicious text, image and
-            audio evidence using trained models,
-            forensic feature extraction,
-            visual explainability and
-            downloadable reports.
-          </p>
-
-
-          <div className="soc-actions">
-
-            <button
-              className="forge-primary"
-              onClick={() =>
-                openPage("text")
-              }
-            >
-              <FaBolt />
-              Begin Investigation
-            </button>
-
-
-            <button
-              className="forge-secondary"
-              onClick={() =>
-                loadAnalytics("overview")
-              }
-            >
-              <FaChartBar />
-              Open Analytics
-            </button>
-
-          </div>
-
-        </div>
-
-
-        <div className="forge-core">
-
-          <div className="core-ring ring-one" />
-          <div className="core-ring ring-two" />
-          <div className="core-ring ring-three" />
-
-          <div className="core-center">
-            <FaShieldAlt />
-            <span>
-              FORGE
-            </span>
-          </div>
-
-          <div className="core-scan-line" />
-
-        </div>
-
-      </section>
-
-
-      <section className="threat-stats">
-
-        <div className="threat-stat-card">
-
-          <FaFileAlt />
-
-          <span>
-            Text Engine
-          </span>
-
-          <strong>
-            ONLINE
-          </strong>
-
-          <p>
-            Stylometry • TF-IDF •
-            N-Gram • SBERT • SHAP
-          </p>
-
-        </div>
-
-
-        <div className="threat-stat-card">
-
-          <FaImage />
-
-          <span>
-            Image Engine
-          </span>
-
-          <strong>
-            ONLINE
-          </strong>
-
-          <p>
-            CNN • Random Forest •
-            Region XAI • Heatmaps
-          </p>
-
-        </div>
-
-
-        <div className="threat-stat-card">
-
-          <FaMicrophone />
-
-          <span>
-            Audio Engine
-          </span>
-
-          <strong>
-            ONLINE
-          </strong>
-
-          <p>
-            LFCC • CNN-BiLSTM •
-            Segment Timeline • Acoustic XAI
-          </p>
-
-        </div>
-
-
-        <div className="threat-stat-card danger">
-
-          <FaCrosshairs />
-
-          <span>
-            Investigation Mode
-          </span>
-
-          <strong>
-            ACTIVE
-          </strong>
-
-          <p>
-            Explainable evidence triage enabled
-          </p>
-
-        </div>
-
-      </section>
-
-
-      <section className="mission-grid">
-
-        <div
-          className="mission-card"
-          onClick={() =>
-            openPage("text")
-          }
-        >
-          <FaFileAlt />
-
-          <h3>
-            Text Forensics
-          </h3>
-
-          <p>
-            Detect synthetic writing and
-            inspect suspicious sentences.
-          </p>
-
-          <span>
-            Launch Text Module
-          </span>
-        </div>
-
-
-        <div
-          className="mission-card"
-          onClick={() =>
-            openPage("image")
-          }
-        >
-          <FaImage />
-
-          <h3>
-            Image Forensics
-          </h3>
-
-          <p>
-            Analyse generated images,
-            regional abnormalities and heatmaps.
-          </p>
-
-          <span>
-            Launch Image Module
-          </span>
-        </div>
-
-
-        <div
-          className="mission-card"
-          onClick={() =>
-            openPage("audio")
-          }
-        >
-          <FaMicrophone />
-
-          <h3>
-            Audio Forensics
-          </h3>
-
-          <p>
-            Detect synthetic speech with
-            timeline-level acoustic evidence.
-          </p>
-
-          <span>
-            Launch Audio Module
-          </span>
-        </div>
-
-      </section>
-
-    </main>
+    <CinematicCommandCentre openPage={openPage} />
   );
 
 
@@ -2210,7 +2043,7 @@ const ResultStack = ({ type }) => (
       <div className="orb orb-c" />
 
 
-      <Sidebar />
+      {page !== "dashboard" && <CommandNav />}
 
 
       {page === "dashboard" && (
