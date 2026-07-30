@@ -7,6 +7,22 @@ backend/models/
 *.pth
 *.onnx
 
+# AI Models
+backend/models/*.keras
+backend/models/*.h5
+backend/models/*.pkl
+backend/models/*.joblib
+backend/models/*.pth
+backend/models/*.pt
+backend/models/*.onnx
+backend/models/*.npy
+
+# Python
+__pycache__/
+*.pyc
+
+# macOS
+.DS_Store
 venv/
 __pycache__/
 
