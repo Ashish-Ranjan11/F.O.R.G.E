@@ -1,4 +1,11 @@
-
+backend/models/
+*.keras
+*.h5
+*.pkl
+*.joblib
+*.pt
+*.pth
+*.onnx
 
 venv/
 __pycache__/
