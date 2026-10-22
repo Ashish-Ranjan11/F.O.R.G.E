@@ -131,12 +131,22 @@ app.mount(
 # CORS
 # =========================================================
 
+# Local development origins plus explicit production origins.
+# Set CORS_ORIGINS to a comma-separated list of additional trusted frontend URLs.
+cors_origins = [
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "https://f-o-r-g-e-ashish-ranjan11s-projects.vercel.app",
+]
+cors_origins.extend(
+    origin.strip().rstrip("/")
+    for origin in os.getenv("CORS_ORIGINS", "").split(",")
+    if origin.strip()
+)
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000",
-        "http://127.0.0.1:3000",
-    ],
+    allow_origins=cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
