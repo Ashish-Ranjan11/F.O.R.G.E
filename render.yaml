@@ -1,0 +1,17 @@
+# Deploy this Blueprint from the repository root in the Render dashboard.
+# Large TensorFlow/PyTorch models may require a higher-memory instance.
+services:
+  - type: web
+    name: forge-api
+    runtime: python
+    plan: free
+    branch: main
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    autoDeployTrigger: commit
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.11
+      - key: CORS_ORIGINS
+        value: https://f-o-r-g-e-ashish-ranjan11s-projects.vercel.app
